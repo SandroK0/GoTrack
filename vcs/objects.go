@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -208,10 +209,33 @@ func WriteCommit(treeHash, parentHash, message string) Commit {
 	}
 }
 
+func GetLatestCommitHash() (string, error) {
+	headPath := filepath.Join(constants.GTDir, "HEAD")
+
+	data, err := os.ReadFile(headPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return "", nil // No commits yet
+		}
+		return "", err
+	}
+
+	return strings.TrimSpace(string(data)), nil
+}
+
+func UpdateLatestCommit(commitHash string) error {
+	headPath := filepath.Join(constants.GTDir, "HEAD")
+	return os.WriteFile(headPath, []byte(commitHash+"\n"), 0644)
+}
+
 func HandleCommit(fileTree *Directory, commitMessage string) {
 
 	tree := BuildTree(fileTree, constants.ObjectsDir)
 
-	WriteCommit(tree.Hash, "", commitMessage)
+	latestCommit, _ := GetLatestCommitHash()
+
+	commit := WriteCommit(tree.Hash, latestCommit, commitMessage)
+
+	UpdateLatestCommit(commit.Hash)
 
 }
