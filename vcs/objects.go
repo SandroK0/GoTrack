@@ -6,18 +6,21 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
 // TreeEntry represents an entry in a tree (file or directory)
 type TreeEntry struct {
+	Mode string // "100644" for files, "040000" for directories
 	Type string // "blob" or "tree"
-	Name string
-	Hash string
+	Hash string // SHA-1 hash of the object
+	Name string // File or directory name
 }
 
 // Tree represents a directory structure
 type Tree struct {
+	Hash    string
 	Entries []TreeEntry
 }
 
@@ -33,7 +36,7 @@ type Commit struct {
 // objects for trees
 // objects for commits
 
-func CreateFileBlob(file *File, objectsDir string) (string, error) {
+func WriteFileBlob(file *File, objectsDir string) (string, error) {
 	// Prepare the content for hashing by adding the Git-like header
 	header := fmt.Sprintf("blob %d\000", len(file.Content))
 	contentWithHeader := append([]byte(header), file.Content...)
@@ -76,9 +79,55 @@ func CreateFileBlob(file *File, objectsDir string) (string, error) {
 	return hash, nil
 }
 
-func HandleCommit(fileTree *Directory, objectsDir string) {
+func HashContent(data []byte) string {
+	hash := sha1.Sum(data)
+	return hex.EncodeToString(hash[:])
+}
+
+// WriteTree creates a tree object from directory entries
+func WriteTree(entries []TreeEntry, objectsDir string) Tree {
+	var treeData []string
+	for _, entry := range entries {
+		line := fmt.Sprintf("%s %s %s %s", entry.Mode, entry.Type, entry.Hash, entry.Name)
+		treeData = append(treeData, line)
+	}
+
+	treeContent := strings.Join(treeData, "\n")
+	treeHash := HashContent([]byte(treeContent))
+
+	tree := Tree{Hash: treeHash, Entries: entries}
+	_ = os.WriteFile(objectsDir+treeHash, []byte(treeContent), 0644)
+
+	return tree
+}
+
+// BuildTree recursively builds a tree object from a directory
+func BuildTree(fileTree *Directory, objectsDir string) Tree {
+	var entries []TreeEntry
 
 	for _, file := range fileTree.Files {
-		CreateFileBlob(file, objectsDir)
+		fileHash, _ := WriteFileBlob(file, objectsDir)
+		entries = append(entries, TreeEntry{
+			Mode: "100644",
+			Type: "blob",
+			Hash: fileHash,
+			Name: file.Name,
+		})
 	}
+
+	for _, dir := range fileTree.SubDirs {
+		subTree := BuildTree(dir, objectsDir)
+		entries = append(entries, TreeEntry{
+			Mode: "040000",
+			Type: "tree",
+			Hash: subTree.Hash,
+			Name: dir.Name,
+		})
+	}
+	return WriteTree(entries, objectsDir)
+}
+
+func HandleCommit(fileTree *Directory, objectsDir string) {
+
+	BuildTree(fileTree, objectsDir)
 }
