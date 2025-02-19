@@ -36,7 +36,7 @@ var commitCmd = &cobra.Command{
 	Short: "Save current state",
 	Run: func(cmd *cobra.Command, args []string) {
 		fileTree := vcs.FileTree()
-
+		vcs.HandleCommit(fileTree, ObjectsDir)
 		fileTree.PrintTree(".")
 	},
 }
