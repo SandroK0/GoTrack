@@ -1,12 +1,13 @@
 package vcs
 
 import (
+	"GoTrack/constants"
 	"crypto/sha1"
 	"encoding/hex"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 )
 
@@ -28,7 +29,10 @@ type Tree struct {
 type Commit struct {
 	TreeHash    string
 	ParentHash  string
-	CreatedTime time.Time
+	CreatedTime int64
+	Message     string // Commit message
+	Hash        string // Commit hash
+
 }
 
 // We need:
@@ -86,48 +90,128 @@ func HashContent(data []byte) string {
 
 // WriteTree creates a tree object from directory entries
 func WriteTree(entries []TreeEntry, objectsDir string) Tree {
-	var treeData []string
+	var treeData []byte
+
+	// Process each tree entry and append it to treeData
 	for _, entry := range entries {
-		line := fmt.Sprintf("%s %s %s %s", entry.Mode, entry.Type, entry.Hash, entry.Name)
-		treeData = append(treeData, line)
+		// Convert mode to octal string, ensuring it is properly encoded
+		mode := fmt.Sprintf("%o", entry.Mode) // Mode as octal string
+		name := []byte(entry.Name)            // Entry name as a byte slice
+		hash := entry.Hash                    // The hash is already a byte slice
+
+		// Prepare the entry's binary format: <mode> <name>\0<hash>
+		// Append the mode, name, null byte, and hash
+		treeData = append(treeData, []byte(mode)...)
+		treeData = append(treeData, ' ') // Space separator
+		treeData = append(treeData, name...)
+		treeData = append(treeData, 0) // Null byte separator
+		treeData = append(treeData, hash...)
 	}
 
-	treeContent := strings.Join(treeData, "\n")
-	treeHash := HashContent([]byte(treeContent))
+	// Create the tree content by adding the header: "tree <size>\0"
+	treeContent := append([]byte(fmt.Sprintf("tree %d\000", len(treeData))), treeData...)
 
-	tree := Tree{Hash: treeHash, Entries: entries}
-	_ = os.WriteFile(objectsDir+treeHash, []byte(treeContent), 0644)
+	// Compute the hash of the tree content
+	treeHash := HashContent(treeContent)
 
-	return tree
+	// Create the full object path based on the hash
+	treePath := filepath.Join(objectsDir, treeHash[:2], treeHash[2:])
+
+	// Create the necessary directories for the object path
+	if err := os.MkdirAll(filepath.Dir(treePath), 0755); err != nil {
+		log.Fatal(err) // Handle error appropriately in your code
+	}
+
+	// Write the tree content to the object file in binary format
+	if err := os.WriteFile(treePath, treeContent, 0644); err != nil {
+		log.Fatal(err) // Handle error appropriately in your code
+	}
+
+	// Return the tree object with the computed hash and entries
+	return Tree{Hash: treeHash, Entries: entries}
 }
 
 // BuildTree recursively builds a tree object from a directory
 func BuildTree(fileTree *Directory, objectsDir string) Tree {
 	var entries []TreeEntry
 
+	// Process all files in the directory
 	for _, file := range fileTree.Files {
 		fileHash, _ := WriteFileBlob(file, objectsDir)
 		entries = append(entries, TreeEntry{
-			Mode: "100644",
-			Type: "blob",
+			Mode: "100644", // Regular file
+			Type: "blob",   // File content as a blob
 			Hash: fileHash,
 			Name: file.Name,
 		})
 	}
 
+	// Recursively process all subdirectories
 	for _, dir := range fileTree.SubDirs {
 		subTree := BuildTree(dir, objectsDir)
 		entries = append(entries, TreeEntry{
-			Mode: "040000",
-			Type: "tree",
+			Mode: "040000", // Directory mode
+			Type: "tree",   // Subdirectory as a tree
 			Hash: subTree.Hash,
 			Name: dir.Name,
 		})
 	}
+
+	// Write the tree object to disk in binary format and return it
 	return WriteTree(entries, objectsDir)
 }
+func WriteCommit(treeHash, parentHash, message string) Commit {
+	timestamp := time.Now().Unix()
 
-func HandleCommit(fileTree *Directory, objectsDir string) {
+	// Construct the commit content in binary format
+	var commitData []byte
 
-	BuildTree(fileTree, objectsDir)
+	// Add tree hash
+	commitData = append(commitData, []byte(fmt.Sprintf("tree %s\n", treeHash))...)
+
+	// Add parent hash (if there's a parent)
+	if parentHash != "" {
+		commitData = append(commitData, []byte(fmt.Sprintf("parent %s\n", parentHash))...)
+	}
+
+	// Add timestamp
+	commitData = append(commitData, []byte(fmt.Sprintf("timestamp %d\n", timestamp))...)
+
+	// Add commit message (ensure the message is properly encoded in binary)
+	commitData = append(commitData, []byte(fmt.Sprintf("message %s\n", message))...)
+
+	// Create the final commit content by including the header: "commit <size>\0"
+	commitContent := append([]byte(fmt.Sprintf("commit %d\000", len(commitData))), commitData...)
+
+	// Compute the hash of the commit content
+	commitHash := HashContent(commitContent)
+
+	// Create the full object path based on the hash
+	commitPath := filepath.Join(constants.ObjectsDir, commitHash[:2], commitHash[2:])
+
+	// Create the necessary directories for the object path
+	if err := os.MkdirAll(filepath.Dir(commitPath), 0755); err != nil {
+		log.Fatal(err) // Handle error appropriately in your code
+	}
+
+	if err := os.WriteFile(commitPath, commitContent, 0644); err != nil {
+		// Write the commit content to the object file in binary format
+		log.Fatal(err) // Handle error appropriately in your code
+	}
+
+	// Return the commit object with the computed hash and content
+	return Commit{
+		TreeHash:   treeHash,
+		ParentHash: parentHash,
+		Message:    message,
+		Hash:       commitHash,
+	}
+}
+
+func HandleCommit(fileTree *Directory, commitMessage string) {
+
+	tree := BuildTree(fileTree, constants.ObjectsDir)
+
+	WriteCommit(tree.Hash, "", commitMessage)
+
 }

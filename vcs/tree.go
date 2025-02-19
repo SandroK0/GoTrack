@@ -39,7 +39,7 @@ func (d *Directory) AddSubDir(name string) *Directory {
 	return newDir
 }
 
-func buildTree(d *Directory, path string) {
+func ScanFileTree(d *Directory, path string) {
 	entries, err := os.ReadDir(path)
 	if err != nil {
 		fmt.Println("Error reading directory:", err)
@@ -54,7 +54,7 @@ func buildTree(d *Directory, path string) {
 				continue
 			}
 			subDir := d.AddSubDir(entry.Name())
-			buildTree(subDir, entryPath)
+			ScanFileTree(subDir, entryPath)
 		} else {
 			data, err := os.ReadFile(entryPath)
 			if err != nil {
@@ -68,6 +68,6 @@ func buildTree(d *Directory, path string) {
 
 func FileTree() *Directory {
 	root := &Directory{Name: "root"}
-	buildTree(root, ".")
+	ScanFileTree(root, ".")
 	return root
 }
