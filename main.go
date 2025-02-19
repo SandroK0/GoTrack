@@ -1,16 +1,16 @@
 package main
 
 import (
-	"compress/gzip"
-	"crypto/sha256"
+	_ "compress/gzip"
+	_ "crypto/sha256"
 	"fmt"
-	"io"
+	_ "io"
 	"os"
+	"path/filepath"
 
 	"github.com/spf13/cobra"
 )
 
-// Function to create the .gt directory
 var initCmd = &cobra.Command{
 	Use:   "init",
 	Short: "Initialize the version control system",
@@ -27,82 +27,18 @@ var initCmd = &cobra.Command{
 	},
 }
 
-// Function to hash and compress a file for version control
 var commitCmd = &cobra.Command{
 	Use:   "commit",
 	Short: "Save curent state",
-	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		file := args[0]
-		fmt.Printf("Adding file: %s\n", file)
-		// Hash the file
-		hash, err := hashFile(file)
-		if err != nil {
-			fmt.Println("Error hashing file:", err)
-			return
-		}
-		// Compress the file (or the hashed data)
-		err = compressFile(file, hash)
-		if err != nil {
-			fmt.Println("Error compressing file:", err)
-			return
-		}
-		fmt.Printf("File %s added with hash: %x\n", file, hash)
+		fileTree := fileTree()
+
+		fmt.Print(fileTree)
+
 	},
 }
 
-// Function to hash the file content (SHA-256)
-func hashFile(file string) ([]byte, error) {
-	// Open the file
-	f, err := os.Open(file)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-
-	// Create a SHA-256 hash object
-	hash := sha256.New()
-	// Copy the file contents into the hash function
-	_, err = io.Copy(hash, f)
-	if err != nil {
-		return nil, err
-	}
-	// Return the file's hash
-	return hash.Sum(nil), nil
-}
-
-// Function to compress the file using GZIP
-func compressFile(file string, hash []byte) error {
-	// Open the file
-	f, err := os.Open(file)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-
-	// Create a new GZIP file to store the compressed file
-	compressedFileName := fmt.Sprintf(".gt/objects/%x.gz", hash) // Using the hash as filename
-	outFile, err := os.Create(compressedFileName)
-	if err != nil {
-		return err
-	}
-	defer outFile.Close()
-
-	// Create a GZIP writer
-	gzipWriter := gzip.NewWriter(outFile)
-	defer gzipWriter.Close()
-
-	// Copy the file contents to the GZIP writer
-	_, err = io.Copy(gzipWriter, f)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
 func init() {
-	// Add commands to the root command
 	rootCmd.AddCommand(commitCmd)
 	rootCmd.AddCommand(initCmd)
 }
@@ -112,6 +48,73 @@ var rootCmd = &cobra.Command{
 	Short: "GotTrack is a simple Go-based version control system",
 }
 
+type File struct {
+	Name    string // Name of the file
+	Content []byte // File contents
+}
+
+// Directory represents a directory which can contain files and subdirectories.
+type Directory struct {
+	Name    string       // Name of the directory
+	Files   []*File      // Files in this directory
+	SubDirs []*Directory // Subdirectories in this directory
+}
+
+func (d *Directory) printTree(prefix string) {
+	fmt.Println(prefix + d.Name + "/")
+	newPrefix := prefix + "  "
+	for _, file := range d.Files {
+		fmt.Println(newPrefix + file.Name)
+	}
+	for _, subdir := range d.SubDirs {
+		subdir.printTree(newPrefix)
+	}
+}
+
+// AddFile dynamically adds a new file to the directory.
+func (d *Directory) AddFile(name string, content []byte) {
+	newFile := &File{Name: name, Content: content}
+	d.Files = append(d.Files, newFile)
+}
+
+// AddSubDir dynamically adds a new subdirectory to the directory.
+func (d *Directory) AddSubDir(name string) *Directory {
+	newDir := &Directory{Name: name}
+	d.SubDirs = append(d.SubDirs, newDir)
+	return newDir
+}
+
+func buildTree(d *Directory, path string) {
+	entries, err := os.ReadDir(path)
+	if err != nil {
+		fmt.Println("Error reading directory:", err)
+		return
+	}
+
+	for _, entry := range entries {
+		entryPath := filepath.Join(path, entry.Name())
+
+		if entry.IsDir() {
+			subDir := d.AddSubDir(entry.Name())
+			buildTree(subDir, entryPath)
+		} else {
+			data, err := os.ReadFile(entryPath)
+			if err != nil {
+				fmt.Println("Error reading file:", err)
+				continue
+			}
+			d.AddFile(entry.Name(), data)
+		}
+	}
+}
+
+func fileTree() *Directory {
+	root := &Directory{Name: "project"}
+	buildTree(root, ".") // Start from current directory
+	root.printTree(".")
+
+	return root
+}
 func main() {
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
