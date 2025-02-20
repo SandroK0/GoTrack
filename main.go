@@ -2,7 +2,9 @@ package main
 
 import (
 	"fmt"
+	_ "fmt"
 	"os"
+	_ "os"
 )
 
 func main() {
@@ -10,4 +12,5 @@ func main() {
 		fmt.Println(err)
 		os.Exit(1)
 	}
+
 }

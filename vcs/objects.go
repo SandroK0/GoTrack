@@ -2,12 +2,14 @@ package vcs
 
 import (
 	"GoTrack/constants"
+	"bytes"
 	"crypto/sha1"
 	"encoding/hex"
 	"fmt"
 	"log"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -28,11 +30,11 @@ type Tree struct {
 
 // Commit represents a commit object
 type Commit struct {
-	TreeHash    string
-	ParentHash  string
-	CreatedTime int64
-	Message     string // Commit message
-	Hash        string // Commit hash
+	TreeHash   string
+	ParentHash string
+	TimeStamp  int64
+	Message    string // Commit message
+	Hash       string // Commit hash
 
 }
 
@@ -204,6 +206,7 @@ func WriteCommit(treeHash, parentHash, message string) Commit {
 	return Commit{
 		TreeHash:   treeHash,
 		ParentHash: parentHash,
+		TimeStamp:  timestamp,
 		Message:    message,
 		Hash:       commitHash,
 	}
@@ -226,6 +229,90 @@ func GetLatestCommitHash() (string, error) {
 func UpdateLatestCommit(commitHash string) error {
 	headPath := filepath.Join(constants.GTDir, "HEAD")
 	return os.WriteFile(headPath, []byte(commitHash+"\n"), 0644)
+}
+
+func ReadObject(hash string) ([]byte, error) {
+	// Construct the full path to the object file
+	objectPath := filepath.Join(constants.ObjectsDir, hash[:2], hash[2:]) // Store objects in subdirectories like Git
+
+	// Read the binary data
+	data, err := os.ReadFile(objectPath)
+	if err != nil {
+		return nil, err
+	}
+
+	nullIndex := bytes.IndexByte(data, 0)
+	if nullIndex == -1 {
+		return nil, fmt.Errorf("invalid object format: missing header separator")
+	}
+
+	// Return the content after the null byte
+	return data[nullIndex+1:], nil
+}
+
+func ParseCommit(data string) Commit {
+	lines := strings.Split(data, "\n") // Split into lines
+	commit := Commit{}
+
+	for _, line := range lines {
+		parts := strings.SplitN(line, " ", 2) // Split each line into key-value pair
+		if len(parts) < 2 {
+			continue // Skip empty or malformed lines
+		}
+
+		key, value := parts[0], parts[1]
+
+		switch key {
+		case "tree":
+			commit.TreeHash = value
+		case "parent":
+			commit.ParentHash = value
+		case "timestamp":
+			timestamp, err := strconv.ParseInt(value, 10, 64)
+			if err == nil {
+				commit.TimeStamp = timestamp
+			}
+		case "message":
+			commit.Message = value
+		}
+	}
+
+	return commit
+}
+
+// Recursive function to print commit history
+func printCommit(commitHash string) {
+	if commitHash == "" {
+		return // Stop recursion if no parent
+	}
+
+	commitData, err := ReadObject(commitHash)
+	if err != nil {
+		fmt.Println("Error reading commit:", err)
+		return
+	}
+
+	commitString := string(commitData)
+	commit := ParseCommit(commitString)
+
+	fmt.Printf("Tree: %s\nParent: %s\nTimestamp: %d\nMessage: %s\n",
+		commit.TreeHash, commit.ParentHash, commit.TimeStamp, commit.Message)
+
+	fmt.Println("\n------------------------------------------------------")
+
+	// Recursively print parent commits
+	printCommit(commit.ParentHash)
+}
+
+// Main function to log commit history
+func LogHistory() {
+	latestCommit, err := GetLatestCommitHash()
+	if err != nil {
+		fmt.Println("Error getting latest commit:", err)
+		return
+	}
+
+	printCommit(latestCommit)
 }
 
 func HandleCommit(fileTree *Directory, commitMessage string) {

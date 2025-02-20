@@ -41,11 +41,39 @@ var commitCmd = &cobra.Command{
 		commitMessage := args[0]
 		fmt.Println("Commit message:", commitMessage)
 		vcs.HandleCommit(fileTree, commitMessage)
-		fileTree.PrintTree(".")
+	},
+}
+
+var logCmd = &cobra.Command{
+	Use:   "log",
+	Short: "See commit history",
+	Run: func(cmd *cobra.Command, args []string) {
+		vcs.LogHistory()
+	},
+}
+
+var readCmd = &cobra.Command{
+	Use:   "cat <hash>",
+	Short: "Read object",
+	Args:  cobra.ExactArgs(1), // Expect exactly one argument (the commit message)
+	Run: func(cmd *cobra.Command, args []string) {
+
+		hash := args[0]
+
+		data, err := vcs.ReadObject(hash)
+		if err != nil {
+			fmt.Println("Error:", err)
+			return
+		}
+
+		fmt.Println("Object Content:")
+		fmt.Println(string(data)) // Print as string for debugging
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(initCmd)
+	rootCmd.AddCommand(logCmd)
 	rootCmd.AddCommand(commitCmd)
+	rootCmd.AddCommand(readCmd)
 }
