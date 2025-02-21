@@ -67,7 +67,7 @@ var readCmd = &cobra.Command{
 		}
 
 		fmt.Println("Object Content:")
-		fmt.Println(string(data)) // Print as string for debugging
+		fmt.Print(string(data)) // Print as string for debugging
 	},
 }
 

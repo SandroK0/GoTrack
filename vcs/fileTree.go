@@ -39,6 +39,7 @@ func (d *Directory) AddSubDir(name string) *Directory {
 	return newDir
 }
 
+// We get and return entire file tree
 func ScanFileTree(d *Directory, path string) {
 	entries, err := os.ReadDir(path)
 	if err != nil {
