@@ -134,33 +134,12 @@ func printCommit(commitHash string) {
 	commitString := string(commitData)
 	commit := ParseCommit(commitString)
 
-	fmt.Printf("\nTree: %s\nParent: %s\nTimestamp: %d\nMessage: %s\n",
-		commit.TreeHash, commit.ParentHash, commit.TimeStamp, commit.Message)
+	fmt.Println(commit)
+
+	fmt.Printf("\nHash: %s\nTree: %s\nParent: %s\nTimestamp: %d\nMessage: %s\n",
+		commitHash, commit.TreeHash, commit.ParentHash, commit.TimeStamp, commit.Message)
 	fmt.Println("\n------------------------------------------------------")
 
 	// Recursively print parent commits
 	printCommit(commit.ParentHash)
-}
-
-// Main function to log commit history
-func LogHistory() {
-	latestCommit, err := GetLatestCommitHash()
-	if err != nil {
-		fmt.Println("Error getting latest commit:", err)
-		return
-	}
-
-	printCommit(latestCommit)
-}
-
-func HandleCommit(fileTree *Directory, commitMessage string) {
-
-	tree := BuildTree(fileTree, constants.ObjectsDir)
-
-	latestCommit, _ := GetLatestCommitHash()
-
-	commit := WriteCommit(tree.Hash, latestCommit, commitMessage)
-
-	UpdateLatestCommit(commit.Hash)
-
 }

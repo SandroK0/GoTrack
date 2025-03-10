@@ -71,9 +71,35 @@ var readCmd = &cobra.Command{
 	},
 }
 
+var checkoutCmd = &cobra.Command{
+	Use:   "checkout <hash>",
+	Short: "Checkout",
+	Args:  cobra.ExactArgs(1), // Expect exactly one argument (the commit message)
+	Run: func(cmd *cobra.Command, args []string) {
+		hash := args[0]
+		fileTree := vcs.FileTree()
+		vcs.SaveCurrentStateTemp(vcs.FileTree())
+		vcs.Checkout(hash, fileTree)
+	},
+}
+
+var testCmd = &cobra.Command{
+	Use:   "test <hash>",
+	Short: "See commit history",
+	Run: func(cmd *cobra.Command, args []string) {
+
+		tree, _ := vcs.ReadObject(args[0])
+
+		tree_struct := vcs.ParseTree(string(tree), args[0])
+		vcs.PrintTree(tree_struct)
+	},
+}
+
 func init() {
 	rootCmd.AddCommand(initCmd)
 	rootCmd.AddCommand(logCmd)
 	rootCmd.AddCommand(commitCmd)
 	rootCmd.AddCommand(readCmd)
+	rootCmd.AddCommand(checkoutCmd)
+	rootCmd.AddCommand(testCmd)
 }

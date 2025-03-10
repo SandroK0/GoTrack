@@ -47,6 +47,6 @@ func WriteFileBlob(file *File, objectsDir string) (string, error) {
 	}
 
 	// Optionally, print the hash of the blob
-	fmt.Printf("Blob created for file '%s' with hash: %s\n", file.Name, hash)
+	// fmt.Printf("Blob created for file '%s' with hash: %s\n", file.Name, hash)
 	return hash, nil
 }

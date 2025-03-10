@@ -7,7 +7,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"strconv"
+	"strings"
 )
 
 // TreeEntry represents an entry in a tree (file or directory)
@@ -35,19 +35,13 @@ func WriteTree(entries []TreeEntry, objectsDir string) Tree {
 
 	// Process each tree entry and append it to treeData
 	for _, entry := range entries {
-		// Convert mode to octal string, ensuring it is properly encoded
-		modeInt, err := strconv.ParseInt(entry.Mode, 8, 32)
-		if err != nil {
-			fmt.Println("Error:", err)
-		}
 
-		mode := fmt.Sprintf("%o", modeInt) // Mode as octal string
-		name := []byte(entry.Name)         // Entry name as a byte slice
-		hash := entry.Hash                 // The hash is already a byte slice
+		name := []byte(entry.Name) // Entry name as a byte slice
+		hash := entry.Hash         // The hash is already a byte slice
 
 		// Prepare the entry's binary format: <mode> <name>\0<hash>
 		// Append the mode, name, null byte, and hash
-		treeData = append(treeData, []byte(mode)...)
+		treeData = append(treeData, []byte(entry.Mode)...)
 		treeData = append(treeData, ' ') // Space separator
 		treeData = append(treeData, name...)
 		treeData = append(treeData, ' ')
@@ -77,6 +71,53 @@ func WriteTree(entries []TreeEntry, objectsDir string) Tree {
 
 	// Return the tree object with the computed hash and entries
 	return Tree{Hash: treeHash, Entries: entries}
+}
+
+func ParseTree(data string, hash string) Tree {
+
+	lines := strings.Split(data, "\n") // Split into lines
+
+	tree := Tree{}
+
+	tree.Hash = hash
+
+	for _, line := range lines {
+
+		treeEntry := TreeEntry{}
+
+		parts := strings.Split(line, " ") // Split each line into key-value pair
+		if len(parts) < 3 {
+			continue
+		}
+		switch parts[0] {
+		case "100644":
+			treeEntry.Mode = "100644"
+			treeEntry.Type = "blob"
+		case "040000":
+			treeEntry.Mode = "040000"
+			treeEntry.Type = "tree"
+		}
+		treeEntry.Name = parts[1]
+		treeEntry.Hash = parts[2]
+		tree.Entries = append(tree.Entries, treeEntry)
+	}
+
+	return tree
+}
+
+func PrintTree(tree Tree) {
+
+	fmt.Println("Tree Hash:", tree.Hash)
+
+	for _, entry := range tree.Entries {
+
+		fmt.Println("Name:", entry.Name)
+		fmt.Println("Mode:", entry.Mode)
+		fmt.Println("Type:", entry.Type)
+		fmt.Println("Hash:", entry.Hash)
+
+	}
+
 }
 
 // BuildTree recursively builds a tree object from a directory

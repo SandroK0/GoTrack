@@ -57,6 +57,9 @@ func ScanFileTree(d *Directory, path string) {
 			subDir := d.AddSubDir(entry.Name())
 			ScanFileTree(subDir, entryPath)
 		} else {
+			if entry.Name() == "gt" {
+				continue
+			}
 			data, err := os.ReadFile(entryPath)
 			if err != nil {
 				fmt.Println("Error reading file:", err)
