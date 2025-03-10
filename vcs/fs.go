@@ -17,14 +17,14 @@ type Directory struct {
 	SubDirs []*Directory
 }
 
-func (d *Directory) PrintTree(prefix string) {
+func (d *Directory) PrintDir(prefix string) {
 	fmt.Println(prefix + d.Name + "/")
 	newPrefix := prefix + "  "
 	for _, file := range d.Files {
 		fmt.Println(newPrefix + file.Name)
 	}
 	for _, subdir := range d.SubDirs {
-		subdir.PrintTree(newPrefix)
+		subdir.PrintDir(newPrefix)
 	}
 }
 
@@ -40,7 +40,7 @@ func (d *Directory) AddSubDir(name string) *Directory {
 }
 
 // We get and return entire file tree
-func ScanFileTree(d *Directory, path string) {
+func ScanDir(d *Directory, path string) {
 	entries, err := os.ReadDir(path)
 	if err != nil {
 		fmt.Println("Error reading directory:", err)
@@ -55,7 +55,7 @@ func ScanFileTree(d *Directory, path string) {
 				continue
 			}
 			subDir := d.AddSubDir(entry.Name())
-			ScanFileTree(subDir, entryPath)
+			ScanDir(subDir, entryPath)
 		} else {
 			if entry.Name() == "gt" {
 				continue
@@ -70,8 +70,46 @@ func ScanFileTree(d *Directory, path string) {
 	}
 }
 
-func FileTree() *Directory {
+func CreateFile(file *File, path string) error {
+
+	// Write the content to the file
+	if err := os.WriteFile(path, file.Content, 0644); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func ApplyTree(tree *Tree, path string) {
+
+	for _, entry := range tree.Entries {
+		fullPath := filepath.Join(path, entry.Name)
+
+		switch entry.Type {
+		case "blob":
+			fileContent, err := ReadObject(entry.Hash)
+			if err != nil {
+				fmt.Println("Error reading file:", err)
+				continue
+			}
+			file := File{entry.Name, fileContent}
+			CreateFile(&file, fullPath)
+
+		case "tree":
+			os.Mkdir(fullPath, os.ModePerm)
+			treeData, _ := ReadObject(entry.Hash)
+
+			subTree := ParseTree(string(treeData), entry.Hash)
+			ApplyTree(&subTree, fullPath)
+
+		}
+
+	}
+
+}
+
+func RootDir() *Directory {
 	root := &Directory{Name: "root"}
-	ScanFileTree(root, ".")
+	ScanDir(root, ".")
 	return root
 }

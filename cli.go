@@ -11,7 +11,7 @@ import (
 
 var rootCmd = &cobra.Command{
 	Use:   "gt",
-	Short: "GotTrack is a simple Go-based version control system",
+	Short: "GoTrack is a simple Go-based version control system",
 }
 
 func Execute() error {
@@ -37,7 +37,7 @@ var commitCmd = &cobra.Command{
 	Short: "Save current state with a commit message",
 	Args:  cobra.ExactArgs(1), // Expect exactly one argument (the commit message)
 	Run: func(cmd *cobra.Command, args []string) {
-		fileTree := vcs.FileTree()
+		fileTree := vcs.RootDir()
 		commitMessage := args[0]
 		fmt.Println("Commit message:", commitMessage)
 		vcs.HandleCommit(fileTree, commitMessage)
@@ -77,8 +77,19 @@ var checkoutCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1), // Expect exactly one argument (the commit message)
 	Run: func(cmd *cobra.Command, args []string) {
 		hash := args[0]
-		fileTree := vcs.FileTree()
-		vcs.SaveCurrentStateTemp(vcs.FileTree())
+		fileTree := vcs.RootDir()
+		vcs.SaveCurrentStateTemp(fileTree)
+		vcs.Checkout(hash, fileTree)
+	},
+}
+
+var backToCurrent = &cobra.Command{
+	Use:   "back-to current",
+	Short: "Back to current uncommited state",
+	Run: func(cmd *cobra.Command, args []string) {
+		hash := args[0]
+		fileTree := vcs.RootDir()
+		vcs.SaveCurrentStateTemp(fileTree)
 		vcs.Checkout(hash, fileTree)
 	},
 }

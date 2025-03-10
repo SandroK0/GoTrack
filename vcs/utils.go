@@ -43,14 +43,6 @@ func cleanDirectory(dir string) error {
 	})
 }
 
-func recreate(treeHash string) {
-
-	data, _ := ReadObject(treeHash)
-
-	fmt.Println(string(data))
-
-}
-
 func HandleCommit(fileTree *Directory, commitMessage string) {
 
 	tree := BuildTree(fileTree, constants.ObjectsDir)
@@ -76,9 +68,16 @@ func LogHistory() {
 func Checkout(hash string, fileTree *Directory) {
 
 	SaveCurrentStateTemp(fileTree)
-
 	cleanDirectory(".")
 
-	recreate(hash)
+	commitData, _ := ReadObject(hash)
+
+	commit := ParseCommit(string(commitData))
+
+	treeData, _ := ReadObject(commit.TreeHash)
+
+	tree := ParseTree(string(treeData), commit.TreeHash)
+
+	ApplyTree(&tree, ".")
 
 }
