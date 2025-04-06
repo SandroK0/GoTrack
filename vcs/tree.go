@@ -1,8 +1,7 @@
 package vcs
 
 import (
-	"crypto/sha1"
-	"encoding/hex"
+	"GoTrack/constants"
 	"fmt"
 	"log"
 	"os"
@@ -24,13 +23,8 @@ type Tree struct {
 	Entries []TreeEntry
 }
 
-func HashContent(data []byte) string {
-	hash := sha1.Sum(data)
-	return hex.EncodeToString(hash[:])
-}
-
 // WriteTree creates a tree object from directory entries
-func WriteTree(entries []TreeEntry, objectsDir string) Tree {
+func WriteTree(entries []TreeEntry) Tree {
 	var treeData []byte
 
 	// Process each tree entry and append it to treeData
@@ -57,7 +51,7 @@ func WriteTree(entries []TreeEntry, objectsDir string) Tree {
 	treeHash := HashContent(treeContent)
 
 	// Create the full object path based on the hash
-	treePath := filepath.Join(objectsDir, treeHash[:2], treeHash[2:])
+	treePath := filepath.Join(constants.ObjectsDir, treeHash[:2], treeHash[2:])
 
 	// Create the necessary directories for the object path
 	if err := os.MkdirAll(filepath.Dir(treePath), 0755); err != nil {
@@ -73,10 +67,39 @@ func WriteTree(entries []TreeEntry, objectsDir string) Tree {
 	return Tree{Hash: treeHash, Entries: entries}
 }
 
+// BuildTree recursively builds a tree object from a directory
+func BuildTree(fileTree *Directory) Tree {
+	var entries []TreeEntry
+
+	// Process all files in the directory
+	for _, file := range fileTree.Files {
+		fileHash, _ := WriteFileBlob(file)
+		entries = append(entries, TreeEntry{
+			Mode: "100644", // Regular file
+			Type: "blob",   // File content as a blob
+			Hash: fileHash,
+			Name: file.Name,
+		})
+	}
+
+	// Recursively process all subdirectories
+	for _, dir := range fileTree.SubDirs {
+		subTree := BuildTree(dir)
+		entries = append(entries, TreeEntry{
+			Mode: "040000", // Directory mode
+			Type: "tree",   // Subdirectory as a tree
+			Hash: subTree.Hash,
+			Name: dir.Name,
+		})
+	}
+
+	// Write the tree object to disk in binary format and return it
+	return WriteTree(entries)
+}
+
 func ParseTree(data string, hash string) Tree {
 
-	lines := strings.Split(data, "\n") // Split into lines
-
+	lines := strings.Split(data, "\n")
 	tree := Tree{}
 
 	tree.Hash = hash
@@ -85,7 +108,7 @@ func ParseTree(data string, hash string) Tree {
 
 		treeEntry := TreeEntry{}
 
-		parts := strings.Split(line, " ") // Split each line into key-value pair
+		parts := strings.Split(line, " ")
 		if len(parts) < 3 {
 			continue
 		}
@@ -118,34 +141,4 @@ func PrintTree(tree Tree) {
 
 	}
 
-}
-
-// BuildTree recursively builds a tree object from a directory
-func BuildTree(fileTree *Directory, objectsDir string) Tree {
-	var entries []TreeEntry
-
-	// Process all files in the directory
-	for _, file := range fileTree.Files {
-		fileHash, _ := WriteFileBlob(file, objectsDir)
-		entries = append(entries, TreeEntry{
-			Mode: "100644", // Regular file
-			Type: "blob",   // File content as a blob
-			Hash: fileHash,
-			Name: file.Name,
-		})
-	}
-
-	// Recursively process all subdirectories
-	for _, dir := range fileTree.SubDirs {
-		subTree := BuildTree(dir, objectsDir)
-		entries = append(entries, TreeEntry{
-			Mode: "040000", // Directory mode
-			Type: "tree",   // Subdirectory as a tree
-			Hash: subTree.Hash,
-			Name: dir.Name,
-		})
-	}
-
-	// Write the tree object to disk in binary format and return it
-	return WriteTree(entries, objectsDir)
 }

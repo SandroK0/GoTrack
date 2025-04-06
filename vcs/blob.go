@@ -1,6 +1,7 @@
 package vcs
 
 import (
+	"GoTrack/constants"
 	"crypto/sha1"
 	"encoding/hex"
 	"fmt"
@@ -8,7 +9,7 @@ import (
 	"path/filepath"
 )
 
-func WriteFileBlob(file *File, objectsDir string) (string, error) {
+func WriteFileBlob(file *File) (string, error) {
 	// Prepare the content for hashing by adding the Git-like header
 	header := fmt.Sprintf("blob %d\000", len(file.Content))
 	contentWithHeader := append([]byte(header), file.Content...)
@@ -21,7 +22,7 @@ func WriteFileBlob(file *File, objectsDir string) (string, error) {
 	hash := hex.EncodeToString(hasher.Sum(nil))
 
 	// Define the path where the object will be stored
-	blobPath := filepath.Join(objectsDir, hash[:2], hash[2:])
+	blobPath := filepath.Join(constants.ObjectsDir, hash[:2], hash[2:])
 
 	// Check if the blob already exists
 	if _, err := os.Stat(blobPath); err == nil {

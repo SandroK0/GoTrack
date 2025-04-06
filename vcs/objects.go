@@ -28,10 +28,10 @@ func ReadObject(hash string) ([]byte, error) {
 
 }
 
-func ReadCurrent(hash string) ([]byte, error) {
+func ReadStash(hash string) ([]byte, error) {
 
 	// Construct the full path to the object file
-	objectPath := filepath.Join(constants.CurrentStateDir, hash[:2], hash[2:]) // Store objects in subdirectories like Git
+	objectPath := filepath.Join(constants.StashDir, hash[:2], hash[2:]) // Store objects in subdirectories like Git
 
 	// Read the binary data
 	data, err := os.ReadFile(objectPath)
