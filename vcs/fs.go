@@ -108,6 +108,31 @@ func ApplyTree(tree *Tree, path string) {
 
 }
 
+func cleanDirectory(dir string) error {
+	return filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if path == dir {
+			return nil
+		}
+
+		if info.Name() == "gt" || (info.IsDir() && info.Name() == ".gt") {
+			if info.IsDir() {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+
+		if err := os.RemoveAll(path); err != nil {
+			return fmt.Errorf("failed to remove %s: %w", path, err)
+		}
+
+		return nil
+	})
+}
+
 func RootDir() *Directory {
 	root := &Directory{Name: "root"}
 	ScanDir(root, ".")

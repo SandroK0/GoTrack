@@ -1,12 +1,54 @@
 package vcs
 
 import (
+	"GoTrack/constants"
+	"bytes"
 	"crypto/sha1"
 	"encoding/hex"
 	"fmt"
 	"os"
 	"path/filepath"
 )
+
+func ReadObject(hash string) ([]byte, error) {
+	// Construct the full path to the object file
+	objectPath := filepath.Join(constants.ObjectsDir, hash[:2], hash[2:]) // Store objects in subdirectories like Git
+
+	// Read the binary data
+	data, err := os.ReadFile(objectPath)
+	if err != nil {
+		return nil, err
+	}
+
+	nullIndex := bytes.IndexByte(data, 0)
+	if nullIndex == -1 {
+		return nil, fmt.Errorf("invalid object format: missing header separator")
+	}
+
+	// Return the content after the null byte
+	return data[nullIndex+1:], nil
+
+}
+
+func ReadStash(hash string) ([]byte, error) {
+
+	// Construct the full path to the object file
+	objectPath := filepath.Join(constants.StashDir, hash[:2], hash[2:]) // Store objects in subdirectories like Git
+
+	// Read the binary data
+	data, err := os.ReadFile(objectPath)
+	if err != nil {
+		return nil, err
+	}
+
+	nullIndex := bytes.IndexByte(data, 0)
+	if nullIndex == -1 {
+		return nil, fmt.Errorf("invalid object format: missing header separator")
+	}
+
+	// Return the content after the null byte
+	return data[nullIndex+1:], nil
+}
 
 func Stash(fileTree *Directory) {
 	// Need to write current state in stash
@@ -26,63 +68,4 @@ func HasUncommitedChanges() {
 
 	// fileTree := RootDir()
 
-}
-
-func cleanDirectory(dir string) error {
-	return filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-
-		if path == dir {
-			return nil
-		}
-
-		if info.Name() == "gt" || (info.IsDir() && info.Name() == ".gt") {
-			if info.IsDir() {
-				return filepath.SkipDir
-			}
-			return nil
-		}
-
-		if err := os.RemoveAll(path); err != nil {
-			return fmt.Errorf("failed to remove %s: %w", path, err)
-		}
-
-		return nil
-	})
-}
-
-func HandleCommit(fileTree *Directory, commitMessage string) {
-
-	tree := BuildTree(fileTree)
-
-	latestCommit, _ := GetLatestCommitHash()
-
-	commit := WriteCommit(tree.Hash, latestCommit, commitMessage)
-
-	UpdateLatestCommit(commit.Hash)
-	UpdateCurrentCommit(commit.Hash)
-
-}
-
-func LogHistory() {
-	latestCommit, err := GetLatestCommitHash()
-	if err != nil {
-		fmt.Println("Error getting latest commit:", err)
-		return
-	}
-
-	printCommit(latestCommit)
-}
-
-func Checkout(hash string, fileTree *Directory) {
-
-	UpdateCurrentCommit(hash)
-	cleanDirectory(".")
-	commitData, _ := ReadObject(hash)
-	commit := ParseCommit(string(commitData))
-	treeData, _ := ReadObject(commit.TreeHash)
-	tree := ParseTree(string(treeData), commit.TreeHash)
-	ApplyTree(&tree, ".")
 }

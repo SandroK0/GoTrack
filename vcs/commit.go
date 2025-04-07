@@ -141,7 +141,7 @@ func ParseCommit(data string) Commit {
 // Recursive function to print commit history
 func printCommit(commitHash string) {
 	if commitHash == "" {
-		return // Stop recursion if no parent
+		return
 	}
 
 	commitData, err := ReadObject(commitHash)
@@ -159,6 +159,5 @@ func printCommit(commitHash string) {
 		commitHash, commit.TreeHash, commit.ParentHash, commit.TimeStamp, commit.Message)
 	fmt.Println("\n------------------------------------------------------")
 
-	// Recursively print parent commits
 	printCommit(commit.ParentHash)
 }
