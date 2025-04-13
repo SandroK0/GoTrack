@@ -153,8 +153,6 @@ func printCommit(commitHash string) {
 	commitString := string(commitData)
 	commit := ParseCommit(commitString)
 
-	fmt.Println(commit)
-
 	fmt.Printf("\nHash: %s\nTree: %s\nParent: %s\nTimestamp: %d\nMessage: %s\n",
 		commitHash, commit.TreeHash, commit.ParentHash, commit.TimeStamp, commit.Message)
 	fmt.Println("\n------------------------------------------------------")

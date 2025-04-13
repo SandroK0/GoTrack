@@ -20,7 +20,8 @@ func HandleInit() {
 func HandleCommit(fileTree *Directory, commitMessage string) {
 
 	tree := BuildTree(fileTree)
-	WriteTree(tree.Entries)
+	fmt.Println("tree name test:", tree.Entries)
+	WriteTree(&tree)
 	latestCommit, _ := GetLatestCommitHash()
 
 	commit := WriteCommit(tree.Hash, latestCommit, commitMessage)

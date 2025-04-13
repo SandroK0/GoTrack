@@ -32,7 +32,6 @@ func WriteBlob(file *TreeEntry) (string, error) {
 	blobPath := filepath.Join(constants.ObjectsDir, file.Hash[:2], file.Hash[2:])
 
 	if _, err := os.Stat(blobPath); err == nil {
-		fmt.Println("Blob already exists:", file.Hash)
 		return file.Hash, nil
 	}
 
@@ -53,20 +52,26 @@ func WriteBlob(file *TreeEntry) (string, error) {
 	return file.Hash, nil
 }
 
-func WriteTree(entries []TreeEntry) {
+func WriteTree(tree *TreeEntry) {
 
-	for _, entry := range entries {
+	// fmt.Println("writing:", tree.Name)
+	// fmt.Println("tree hash:", tree.Hash)
+	// fmt.Println("tree content:", string(tree.Content))
+
+	treePath := filepath.Join(constants.ObjectsDir, tree.Hash[:2], tree.Hash[2:])
+
+	if err := os.MkdirAll(filepath.Dir(treePath), 0755); err != nil {
+		log.Fatal(err)
+	}
+
+	if err := os.WriteFile(treePath, tree.Content, 0644); err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println("done")
+
+	for _, entry := range tree.Entries {
 		if entry.Type == "tree" {
-			treePath := filepath.Join(constants.ObjectsDir, entry.Hash[:2], entry.Hash[2:])
-
-			if err := os.MkdirAll(filepath.Dir(treePath), 0755); err != nil {
-				log.Fatal(err)
-			}
-
-			if err := os.WriteFile(treePath, entry.Content, 0644); err != nil {
-				log.Fatal(err)
-			}
-			WriteTree(entry.Entries)
+			WriteTree(&entry)
 		} else {
 			WriteBlob(&entry)
 		}
@@ -80,7 +85,7 @@ func BuildTree(fileTree *Directory) TreeEntry {
 	for _, file := range fileTree.Files {
 		fileHash := HashContent(file.Content)
 
-		fileContentWithHeader := append([]byte(fmt.Sprintf("tree %d\000", len(file.Content))), file.Content...)
+		fileContentWithHeader := append([]byte(fmt.Sprintf("blob %d\000", len(file.Content))), file.Content...)
 		entries = append(entries, TreeEntry{
 			Mode:    "100644", // Regular file
 			Type:    "blob",
@@ -119,11 +124,13 @@ func constructTree(entries []TreeEntry) TreeEntry {
 		treeData = append(treeData, '\n')
 	}
 
+	fmt.Println("tree data:", string(treeData))
 	// Create the tree content by adding the header: "tree <size>\0"
 	treeContent := append([]byte(fmt.Sprintf("tree %d\000", len(treeData))), treeData...)
 
-	treeHash := HashContent(treeContent)
+	treeHash := HashContent(treeData)
 	fmt.Println("tree hash:", treeHash)
+	fmt.Println("tree content:", string(treeContent))
 	return TreeEntry{Hash: treeHash, Entries: entries, Content: treeContent}
 }
 
