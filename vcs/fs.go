@@ -133,8 +133,8 @@ func cleanDirectory(dir string) error {
 	})
 }
 
-func RootDir() *Directory {
+func RootDir(path string) *Directory {
 	root := &Directory{Name: "root"}
-	ScanDir(root, ".")
+	ScanDir(root, path)
 	return root
 }

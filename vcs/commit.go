@@ -21,7 +21,7 @@ type Commit struct {
 
 }
 
-func WriteCommit(treeHash, parentHash, message string) Commit {
+func WriteCommit(treeHash, parentHash, message string, GTDirPath string) Commit {
 	timestamp := time.Now().Unix()
 
 	// Construct the commit content in binary format
@@ -48,7 +48,7 @@ func WriteCommit(treeHash, parentHash, message string) Commit {
 	commitHash := HashContent(commitContent)
 
 	// Create the full object path based on the hash
-	commitPath := filepath.Join(constants.ObjectsDir, commitHash[:2], commitHash[2:])
+	commitPath := filepath.Join(GTDirPath, constants.ObjectsDir, commitHash[:2], commitHash[2:])
 
 	// Create the necessary directories for the object path
 	if err := os.MkdirAll(filepath.Dir(commitPath), 0755); err != nil {

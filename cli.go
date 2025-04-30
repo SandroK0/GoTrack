@@ -3,6 +3,7 @@ package main
 import (
 	"GoTrack/vcs"
 	"fmt"
+	"os"
 
 	"github.com/spf13/cobra"
 )
@@ -20,7 +21,12 @@ var initCmd = &cobra.Command{
 	Use:   "init",
 	Short: "Initialize the version control system",
 	Run: func(cmd *cobra.Command, args []string) {
-		vcs.HandleInit()
+		cwd, err := os.Getwd()
+		if err != nil {
+			fmt.Println("Failed to get current directory:", err)
+			return
+		}
+		vcs.HandleInit(cwd)
 	},
 }
 
@@ -30,10 +36,15 @@ var commitCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1), // Expect exactly one argument (the commit message)
 	Run: func(cmd *cobra.Command, args []string) {
 
-		fileTree := vcs.RootDir()
+		cwd, err := os.Getwd()
+		if err != nil {
+			fmt.Println("Failed to get current directory:", err)
+			return
+		}
+		fileTree := vcs.RootDir(cwd)
 		commitMessage := args[0]
 		fmt.Println("Commit message:", commitMessage)
-		vcs.HandleCommit(fileTree, commitMessage)
+		vcs.HandleCommit(fileTree, commitMessage, cwd)
 	},
 }
 
@@ -65,9 +76,13 @@ var checkoutCmd = &cobra.Command{
 
 		// Should check for uncommited changes here.
 		// if True. user should commit or stash
-
+		cwd, err := os.Getwd()
+		if err != nil {
+			fmt.Println("Failed to get current directory:", err)
+			return
+		}
 		hash := args[0]
-		fileTree := vcs.RootDir()
+		fileTree := vcs.RootDir(cwd)
 		vcs.HandleCheckout(hash, fileTree)
 	},
 }

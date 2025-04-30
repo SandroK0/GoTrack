@@ -3,28 +3,38 @@ package vcs
 import (
 	"GoTrack/constants"
 	"fmt"
+	"log"
 	"os"
+	"path/filepath"
 )
 
-func HandleInit() {
-
-	err := os.Mkdir(constants.GTDir, 0755)
+func HandleInit(cwd string) {
+	gtDir := filepath.Join(cwd, constants.GTDir)
+	objectsDir := filepath.Join(cwd, constants.ObjectsDir)
+	err := os.Mkdir(gtDir, 0755)
 	if err != nil {
 		fmt.Println("Error creating directory:", err)
 		return
 	}
-	os.MkdirAll(constants.ObjectsDir, 0755)
+
+	os.MkdirAll(objectsDir, 0755)
 	fmt.Println(".gt directory and subdirectories created successfully.")
 }
 
-func HandleCommit(fileTree *Directory, commitMessage string) {
+func HandleCommit(fileTree *Directory, commitMessage string, cwd string) {
+
+	GTDirPath := filepath.Join(cwd, constants.GTDir)
+	if _, err := os.Stat(GTDirPath); os.IsNotExist(err) {
+		log.Fatal("GoTrack is not initilized.")
+		return
+	}
 
 	tree := BuildTree(fileTree)
-	fmt.Println("tree name test:", tree.Entries)
-	WriteTree(&tree)
+	fmt.Println("Tree Hash:", tree.Entries)
+	WriteTree(&tree, GTDirPath)
 	latestCommit, _ := GetLatestCommitHash()
 
-	commit := WriteCommit(tree.Hash, latestCommit, commitMessage)
+	commit := WriteCommit(tree.Hash, latestCommit, commitMessage, GTDirPath)
 
 	UpdateLatestCommit(commit.Hash)
 	UpdateCurrentCommit(commit.Hash)

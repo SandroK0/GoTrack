@@ -28,8 +28,9 @@ type TreeEntry struct {
 	Entries []TreeEntry // Only for tree
 }
 
-func WriteBlob(file *TreeEntry) (string, error) {
-	blobPath := filepath.Join(constants.ObjectsDir, file.Hash[:2], file.Hash[2:])
+func WriteBlob(file *TreeEntry, GTDirPath string) (string, error) {
+
+	blobPath := filepath.Join(GTDirPath, constants.ObjectsDir, file.Hash[:2], file.Hash[2:])
 
 	if _, err := os.Stat(blobPath); err == nil {
 		return file.Hash, nil
@@ -52,13 +53,9 @@ func WriteBlob(file *TreeEntry) (string, error) {
 	return file.Hash, nil
 }
 
-func WriteTree(tree *TreeEntry) {
+func WriteTree(tree *TreeEntry, GTDirPath string) {
 
-	// fmt.Println("writing:", tree.Name)
-	// fmt.Println("tree hash:", tree.Hash)
-	// fmt.Println("tree content:", string(tree.Content))
-
-	treePath := filepath.Join(constants.ObjectsDir, tree.Hash[:2], tree.Hash[2:])
+	treePath := filepath.Join(GTDirPath, constants.ObjectsDir, tree.Hash[:2], tree.Hash[2:])
 
 	if err := os.MkdirAll(filepath.Dir(treePath), 0755); err != nil {
 		log.Fatal(err)
@@ -67,13 +64,12 @@ func WriteTree(tree *TreeEntry) {
 	if err := os.WriteFile(treePath, tree.Content, 0644); err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println("done")
 
 	for _, entry := range tree.Entries {
 		if entry.Type == "tree" {
-			WriteTree(&entry)
+			WriteTree(&entry, GTDirPath)
 		} else {
-			WriteBlob(&entry)
+			WriteBlob(&entry, GTDirPath)
 		}
 	}
 
@@ -104,6 +100,10 @@ func BuildTree(fileTree *Directory) TreeEntry {
 			Name: dir.Name,
 		})
 	}
+	// fmt.Println("entries:\n", entries)
+	for _, entry := range entries {
+		fmt.Println("Name:", entry.Name)
+	}
 
 	return constructTree(entries)
 }
@@ -124,13 +124,13 @@ func constructTree(entries []TreeEntry) TreeEntry {
 		treeData = append(treeData, '\n')
 	}
 
-	fmt.Println("tree data:", string(treeData))
 	// Create the tree content by adding the header: "tree <size>\0"
 	treeContent := append([]byte(fmt.Sprintf("tree %d\000", len(treeData))), treeData...)
 
+	fmt.Println("tree content:\n", string(treeContent))
+
 	treeHash := HashContent(treeData)
-	fmt.Println("tree hash:", treeHash)
-	fmt.Println("tree content:", string(treeContent))
+
 	return TreeEntry{Hash: treeHash, Entries: entries, Content: treeContent}
 }
 
