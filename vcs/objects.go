@@ -1,7 +1,6 @@
 package vcs
 
 import (
-	"GoTrack/constants"
 	"fmt"
 	"log"
 	"os"
@@ -28,9 +27,9 @@ type TreeEntry struct {
 	Entries []TreeEntry // Only for tree
 }
 
-func WriteBlob(file *TreeEntry, GTDirPath string) (string, error) {
+func WriteBlob(file *TreeEntry, objectsDir string) (string, error) {
 
-	blobPath := filepath.Join(GTDirPath, constants.ObjectsDir, file.Hash[:2], file.Hash[2:])
+	blobPath := filepath.Join(objectsDir, file.Hash[:2], file.Hash[2:])
 
 	if _, err := os.Stat(blobPath); err == nil {
 		return file.Hash, nil
@@ -53,9 +52,9 @@ func WriteBlob(file *TreeEntry, GTDirPath string) (string, error) {
 	return file.Hash, nil
 }
 
-func WriteTree(tree *TreeEntry, GTDirPath string) {
+func WriteTree(tree *TreeEntry, objectsDir string) {
 
-	treePath := filepath.Join(GTDirPath, constants.ObjectsDir, tree.Hash[:2], tree.Hash[2:])
+	treePath := filepath.Join(objectsDir, tree.Hash[:2], tree.Hash[2:])
 
 	if err := os.MkdirAll(filepath.Dir(treePath), 0755); err != nil {
 		log.Fatal(err)
@@ -67,9 +66,9 @@ func WriteTree(tree *TreeEntry, GTDirPath string) {
 
 	for _, entry := range tree.Entries {
 		if entry.Type == "tree" {
-			WriteTree(&entry, GTDirPath)
+			WriteTree(&entry, objectsDir)
 		} else {
-			WriteBlob(&entry, GTDirPath)
+			WriteBlob(&entry, objectsDir)
 		}
 	}
 
@@ -100,10 +99,6 @@ func BuildTree(fileTree *Directory) TreeEntry {
 			Name: dir.Name,
 		})
 	}
-	// fmt.Println("entries:\n", entries)
-	for _, entry := range entries {
-		fmt.Println("Name:", entry.Name)
-	}
 
 	return constructTree(entries)
 }
@@ -126,8 +121,6 @@ func constructTree(entries []TreeEntry) TreeEntry {
 
 	// Create the tree content by adding the header: "tree <size>\0"
 	treeContent := append([]byte(fmt.Sprintf("tree %d\000", len(treeData))), treeData...)
-
-	fmt.Println("tree content:\n", string(treeContent))
 
 	treeHash := HashContent(treeData)
 

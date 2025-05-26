@@ -41,10 +41,9 @@ var commitCmd = &cobra.Command{
 			fmt.Println("Failed to get current directory:", err)
 			return
 		}
-		fileTree := vcs.RootDir(cwd)
 		commitMessage := args[0]
 		fmt.Println("Commit message:", commitMessage)
-		vcs.HandleCommit(fileTree, commitMessage, cwd)
+		vcs.HandleCommit(commitMessage, cwd)
 	},
 }
 
@@ -82,8 +81,7 @@ var checkoutCmd = &cobra.Command{
 			return
 		}
 		hash := args[0]
-		fileTree := vcs.RootDir(cwd)
-		vcs.HandleCheckout(hash, fileTree)
+		vcs.HandleCheckout(cwd, hash)
 	},
 }
 

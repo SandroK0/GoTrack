@@ -28,6 +28,17 @@ func (d *Directory) PrintDir(prefix string) {
 	}
 }
 
+func (d *Directory) PrintFileTree(prefix string) {
+	fmt.Println(prefix + d.Name + "/")
+	newPrefix := prefix + "  "
+	for _, file := range d.Files {
+		fmt.Println(newPrefix + file.Name)
+	}
+	for _, subdir := range d.SubDirs {
+		subdir.PrintFileTree(newPrefix)
+	}
+}
+
 func (d *Directory) AddFile(name string, content []byte) {
 	newFile := &File{Name: name, Content: content}
 	d.Files = append(d.Files, newFile)

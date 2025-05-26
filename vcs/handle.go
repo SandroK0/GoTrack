@@ -21,7 +21,7 @@ func HandleInit(cwd string) {
 	fmt.Println(".gt directory and subdirectories created successfully.")
 }
 
-func HandleCommit(fileTree *Directory, commitMessage string, cwd string) {
+func HandleCommit(commitMessage string, cwd string) {
 
 	GTDirPath := filepath.Join(cwd, constants.GTDir)
 	if _, err := os.Stat(GTDirPath); os.IsNotExist(err) {
@@ -29,15 +29,20 @@ func HandleCommit(fileTree *Directory, commitMessage string, cwd string) {
 		return
 	}
 
+	objectsDir := filepath.Join(cwd, constants.ObjectsDir)
+
+	fileTree := RootDir(cwd)
+
+	fileTree.PrintFileTree("")
+
 	tree := BuildTree(fileTree)
-	fmt.Println("Tree Hash:", tree.Entries)
-	WriteTree(&tree, GTDirPath)
+	WriteTree(&tree, objectsDir)
 	latestCommit, _ := GetLatestCommitHash()
 
-	commit := WriteCommit(tree.Hash, latestCommit, commitMessage, GTDirPath)
+	commit := WriteCommit(tree.Hash, latestCommit, commitMessage, objectsDir)
 
-	UpdateLatestCommit(commit.Hash)
-	UpdateCurrentCommit(commit.Hash)
+	UpdateLatestCommit(GTDirPath, commit.Hash)
+	UpdateCurrentCommit(GTDirPath, commit.Hash)
 
 }
 
@@ -51,9 +56,11 @@ func HandleLog() {
 	printCommit(latestCommit)
 }
 
-func HandleCheckout(hash string, fileTree *Directory) {
+func HandleCheckout(cwd string, hash string) {
 
-	UpdateCurrentCommit(hash)
+	GTDirPath := filepath.Join(cwd, constants.GTDir)
+
+	UpdateCurrentCommit(GTDirPath, hash)
 	cleanDirectory(".")
 	commitData, _ := ReadObject(hash)
 	commit := ParseCommit(string(commitData))

@@ -21,7 +21,7 @@ type Commit struct {
 
 }
 
-func WriteCommit(treeHash, parentHash, message string, GTDirPath string) Commit {
+func WriteCommit(treeHash, parentHash, message string, objectsDir string) Commit {
 	timestamp := time.Now().Unix()
 
 	// Construct the commit content in binary format
@@ -48,7 +48,7 @@ func WriteCommit(treeHash, parentHash, message string, GTDirPath string) Commit 
 	commitHash := HashContent(commitContent)
 
 	// Create the full object path based on the hash
-	commitPath := filepath.Join(GTDirPath, constants.ObjectsDir, commitHash[:2], commitHash[2:])
+	commitPath := filepath.Join(objectsDir, commitHash[:2], commitHash[2:])
 
 	// Create the necessary directories for the object path
 	if err := os.MkdirAll(filepath.Dir(commitPath), 0755); err != nil {
@@ -84,8 +84,8 @@ func GetLatestCommitHash() (string, error) {
 	return strings.TrimSpace(string(data)), nil
 }
 
-func GetCurrentCommitHash() (string, error) {
-	headPath := filepath.Join(constants.GTDir, "CURRENT")
+func GetCurrentCommitHash(GTDir string) (string, error) {
+	headPath := filepath.Join(GTDir, "CURRENT")
 
 	data, err := os.ReadFile(headPath)
 	if err != nil {
@@ -98,13 +98,13 @@ func GetCurrentCommitHash() (string, error) {
 	return strings.TrimSpace(string(data)), nil
 }
 
-func UpdateCurrentCommit(commitHash string) error {
-	headPath := filepath.Join(constants.GTDir, "HEAD")
+func UpdateCurrentCommit(GTDir string, commitHash string) error {
+	headPath := filepath.Join(GTDir, "HEAD")
 	return os.WriteFile(headPath, []byte(commitHash+"\n"), 0644)
 }
 
-func UpdateLatestCommit(commitHash string) error {
-	headPath := filepath.Join(constants.GTDir, "HEAD")
+func UpdateLatestCommit(GTDir string, commitHash string) error {
+	headPath := filepath.Join(GTDir, "HEAD")
 	return os.WriteFile(headPath, []byte(commitHash+"\n"), 0644)
 }
 

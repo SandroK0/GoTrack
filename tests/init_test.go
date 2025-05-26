@@ -15,7 +15,7 @@ func TestHandleInit_CreatesDirectories(t *testing.T) {
 	vcs.HandleInit(tmp)
 
 	gtPath := filepath.Join(tmp, constants.GTDir)
-	objectsPath := filepath.Join(tmp, constants.ObjectsDir)
+	objectsPath := filepath.Join(gtPath, constants.ObjectsDir)
 
 	if _, err := os.Stat(gtPath); os.IsNotExist(err) {
 		t.Fatalf("Expected .gt directory at %s, but it was not created", gtPath)
